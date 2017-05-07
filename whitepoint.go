@@ -48,6 +48,32 @@ func xy2rgb(xy XY) RGB {
 	return RGB{R, G, B}
 }
 
+func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) {
+	ca, cb := &best_c0, &best_c1
+	best_dis := distance(setpoint, best_xy)
+	found := false
+	for i := 0; i < 200; i++ {
+		tmp := *ca
+		*ca -= 1
+		adjust(best_c0, best_c1)
+		xy, err := measure()
+		if err != nil { die(err) }
+		dis := distance(setpoint, xy)
+		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis)
+		if dis > best_dis + 0.0005 {
+			*ca = tmp
+			if found { break }
+			found = true
+			ca, cb = cb, ca
+		} else {
+			found = false
+			best_dis = dis
+			best_xy = xy
+		}
+	}
+	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
+}
+
 func main() {
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
@@ -79,7 +105,9 @@ func main() {
 		return XY{0, 0}, errors.New("Unexpected EOF")
 	}
 
-	adj_rgb := color.RGBA{255, 255, 255, 255}
+	max_fix := byte(255)
+	max_c0, max_c1 := max_fix, max_fix
+	adj_rgb := color.RGBA{max_fix, max_c0, max_c1, 255}
 	adj_c0, adj_c1 := &adj_rgb.G, &adj_rgb.B
 
 	adjust := func(c0, c1 byte) {
@@ -88,7 +116,7 @@ func main() {
 		draw.Draw(fb, fb.Bounds(), &image.Uniform{adj_rgb}, image.ZP, draw.Src)
 	}
 
-	adjust(*adj_c0, *adj_c1)
+	adjust(max_c0, max_c1)
 	now_xy, err := measure()
 	if err != nil { die(err) }
 	d65_xy := XY{0.31271, 0.32902}
@@ -96,7 +124,6 @@ func main() {
 	now_rgb := xy2rgb(now_xy)
 	err_rgb := difference(d65_rgb, now_rgb)
 	//fmt.Fprintln(os.Stderr, err_rgb)
-
 
 	if err_rgb.R >= err_rgb.G && err_rgb.R >= err_rgb.B {
 		fmt.Fprintln(os.Stderr, "adjusting green and blue")
@@ -109,29 +136,8 @@ func main() {
 		adj_c0, adj_c1 = &adj_rgb.R, &adj_rgb.G
 	}
 
-	c0, c1 := *adj_c0, *adj_c1
-	ca, cb := &c0, &c1
-	dis_xy := distance(d65_xy, now_xy)
-	found := false
-	for i := 0; i < 200; i++ {
-		tmp := *ca
-		*ca -= 1
-		adjust(c0, c1)
-		xy, err := measure()
-		if err != nil { die(err) }
-		dis := distance(d65_xy, xy)
-		fmt.Println(now_xy.X, now_xy.Y, d65_xy.X, d65_xy.Y, dis_xy)
-		if dis > dis_xy + 0.0005 {
-			*ca = tmp
-			if found { break }
-			found = true
-			ca, cb = cb, ca
-		} else {
-			found = false
-			dis_xy = dis
-			now_xy = xy
-		}
-	}
+	naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+
 	n, err := spotread_stdin.Write([]byte{'q', 'q'})
 	if err != nil { die(err) }
 	if n != 2 { die("Couldnt send two bytes") }
