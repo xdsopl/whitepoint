@@ -79,15 +79,16 @@ func main() {
 		return XY{0, 0}, errors.New("Unexpected EOF")
 	}
 
-	adjust := func(r, g, b byte) {
-		draw.Draw(fb, fb.Bounds(), &image.Uniform{color.RGBA{r, g, b, 255}}, image.ZP, draw.Src)
+	adj_rgb := color.RGBA{255, 255, 255, 255}
+	adj_c0, adj_c1 := &adj_rgb.G, &adj_rgb.B
+
+	adjust := func(c0, c1 byte) {
+		*adj_c0 = c0
+		*adj_c1 = c1
+		draw.Draw(fb, fb.Bounds(), &image.Uniform{adj_rgb}, image.ZP, draw.Src)
 	}
 
-	r := byte(255)
-	g := byte(255)
-	b := byte(255)
-
-	adjust(r, g, b)
+	adjust(*adj_c0, *adj_c1)
 	now_xy, err := measure()
 	if err != nil { die(err) }
 	d65_xy := XY{0.31271, 0.32902}
@@ -96,35 +97,35 @@ func main() {
 	err_rgb := difference(d65_rgb, now_rgb)
 	//fmt.Fprintln(os.Stderr, err_rgb)
 
-	var c0 *byte
-	var c1 *byte
 
 	if err_rgb.R >= err_rgb.G && err_rgb.R >= err_rgb.B {
 		fmt.Fprintln(os.Stderr, "adjusting green and blue")
-		c0, c1 = &g, &b
+		adj_c0, adj_c1 = &adj_rgb.G, &adj_rgb.B
 	} else if err_rgb.G >= err_rgb.R && err_rgb.G >= err_rgb.B {
 		fmt.Fprintln(os.Stderr, "adjusting red and blue")
-		c0, c1 = &r, &b
+		adj_c0, adj_c1 = &adj_rgb.R, &adj_rgb.B
 	} else {
 		fmt.Fprintln(os.Stderr, "adjusting red and green")
-		c0, c1 = &r, &g
+		adj_c0, adj_c1 = &adj_rgb.R, &adj_rgb.G
 	}
 
+	c0, c1 := *adj_c0, *adj_c1
+	ca, cb := &c0, &c1
 	dis_xy := distance(d65_xy, now_xy)
 	found := false
 	for i := 0; i < 200; i++ {
-		tmp := *c0
-		*c0 -= 1
-		adjust(r, g, b)
+		tmp := *ca
+		*ca -= 1
+		adjust(c0, c1)
 		xy, err := measure()
 		if err != nil { die(err) }
 		dis := distance(d65_xy, xy)
 		fmt.Println(now_xy.X, now_xy.Y, d65_xy.X, d65_xy.Y, dis_xy)
 		if dis > dis_xy + 0.0005 {
-			*c0 = tmp
+			*ca = tmp
 			if found { break }
 			found = true
-			c0, c1 = c1, c0
+			ca, cb = cb, ca
 		} else {
 			found = false
 			dis_xy = dis
