@@ -71,6 +71,7 @@ func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, erro
 			best_xy = xy
 		}
 	}
+	adjust(best_c0, best_c1)
 	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
 }
 
