@@ -9,7 +9,9 @@ package main
 import (
 	"os"
 	"fmt"
+	"time"
 	"math"
+	"math/rand"
 	"bufio"
 	"errors"
 	"strconv"
@@ -70,6 +72,70 @@ func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, erro
 			best_dis = dis
 			best_xy = xy
 		}
+	}
+	adjust(best_c0, best_c1)
+	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
+}
+
+func Broydens_method(H *[4]float64, px0, px1, py0, py1, x0, x1, y0, y1 float64) (float64, float64) {
+	dx0 := x0 - px0
+	dx1 := x1 - px1
+	dy0 := y0 - py0
+	dy1 := y1 - py1
+	t0 := dx0 - (H[0] * dy0 + H[1] * dy1)
+	t1 := dx1 - (H[2] * dy0 + H[3] * dy1)
+	u0 := dx0 * H[0] + dx1 * H[2]
+	u1 := dx0 * H[1] + dx1 * H[3]
+	sp := u0 * dy0 + u1 * dy1
+	if math.Abs(sp) > 0.0000000001 {
+		H[0] += t0 * u0 / sp
+		H[1] += t0 * u1 / sp
+		H[2] += t1 * u0 / sp
+		H[3] += t1 * u1 / sp
+		//fmt.Fprintln(os.Stderr, *H)
+	}
+	x0 -= H[0] * y0 + H[1] * y1
+	x1 -= H[2] * y0 + H[3] * y1
+	return x0, x1
+}
+
+func clamp(x, a, b float64) float64 {
+	if x < a { return a }
+	if x > b { return b }
+	return x
+}
+
+func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	px0, px1 := float64(best_c0), float64(best_c1)
+	prev_xy := best_xy
+	x0, x1 := px0 * r.Float64(), px1 * r.Float64()
+	c0, c1 := byte(x0 + 0.5), byte(x1 + 0.5)
+	H := [4]float64{1.0 / x0, 0, 0, 1.0 / x1}
+	best_dis := distance(setpoint, best_xy)
+	for i := 0; i < 50; i++ {
+		adjust(c0, c1)
+		xy, err := measure()
+		if err != nil { die(err) }
+		dis := distance(setpoint, xy)
+		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis)
+		if dis < best_dis {
+			best_c0 = c0
+			best_c1 = c1
+			best_xy = xy
+			best_dis = dis
+		}
+		py0, py1 := prev_xy.X - setpoint.X, prev_xy.Y - setpoint.Y
+		y0, y1 := xy.X - setpoint.X, xy.Y - setpoint.Y
+		nx0, nx1 := Broydens_method(&H, px0, px1, py0, py1, x0, x1, y0, y1)
+		x0, x1, px0, px1 = clamp(nx0, 0, 255), clamp(nx1, 0, 255), x0, x1
+		// perturbate if no difference or loss of dimension
+		for (c0 == byte(x0 + 0.5) && c1 == byte(x1 + 0.5)) || byte(x0 + 0.5) == byte(x1 + 0.5) {
+			x0 = clamp(x0 + r.Float64() - 0.5, 0, 255)
+			x1 = clamp(x1 + r.Float64() - 0.5, 0, 255)
+		}
+		c0, c1 = byte(x0 + 0.5), byte(x1 + 0.5)
+		prev_xy = xy
 	}
 	adjust(best_c0, best_c1)
 	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
@@ -138,6 +204,7 @@ func main() {
 	}
 
 	naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	//quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
 
 	n, err := spotread_stdin.Write([]byte{'q', 'q'})
 	if err != nil { die(err) }
