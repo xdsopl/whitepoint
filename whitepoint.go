@@ -111,6 +111,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 	prev_xy := best_xy
 	x0, x1 := px0 * r.Float64(), px1 * r.Float64()
 	c0, c1 := byte(x0 + 0.5), byte(x1 + 0.5)
+	x0, x1 = float64(c0), float64(c1)
 	H := [4]float64{1.0 / x0, 0, 0, 1.0 / x1}
 	best_dis := distance(setpoint, best_xy)
 	for i := 0; i < 50; i++ {
@@ -130,11 +131,13 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		nx0, nx1 := Broydens_method(&H, px0, px1, py0, py1, x0, x1, y0, y1)
 		x0, x1, px0, px1 = clamp(nx0, 0, 255), clamp(nx1, 0, 255), x0, x1
 		// perturbate if no difference or loss of dimension
-		for (c0 == byte(x0 + 0.5) && c1 == byte(x1 + 0.5)) || byte(x0 + 0.5) == byte(x1 + 0.5) {
-			x0 = clamp(x0 + r.Float64() - 0.5, 0, 255)
-			x1 = clamp(x1 + r.Float64() - 0.5, 0, 255)
+		nc0, nc1 := byte(x0 + 0.5), byte(x1 + 0.5)
+		for (c0 == nc0 && c1 == nc1) || nc0 == nc1 {
+			if nc0 > 0 { nc0 -= byte(r.Intn(2)) } else { nc0 += byte(r.Intn(2)) }
+			if nc1 > 0 { nc1 -= byte(r.Intn(2)) } else { nc1 += byte(r.Intn(2)) }
 		}
-		c0, c1 = byte(x0 + 0.5), byte(x1 + 0.5)
+		c0, c1 = nc0, nc1
+		x0, x1 = float64(c0), float64(c1)
 		prev_xy = xy
 	}
 	adjust(best_c0, best_c1)
