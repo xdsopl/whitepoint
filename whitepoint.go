@@ -50,7 +50,7 @@ func xy2rgb(xy XY) RGB {
 	return RGB{R, G, B}
 }
 
-func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) {
+func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
 	ca, cb := &best_c0, &best_c1
 	best_dis := distance(setpoint, best_xy)
 	found := false
@@ -74,7 +74,7 @@ func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, erro
 		}
 	}
 	adjust(best_c0, best_c1)
-	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
+	return best_c0, best_c1, best_xy
 }
 
 func Broydens_method(good bool, H *[4]float64, px0, px1, py0, py1, x0, x1, y0, y1 float64) (float64, float64) {
@@ -112,7 +112,7 @@ func clamp(x, a, b int) int {
 	return x
 }
 
-func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) {
+func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	pc0, pc1 := 0, 0
 	for pc0 == pc1 {
@@ -154,7 +154,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		prev_xy = xy
 	}
 	adjust(best_c0, best_c1)
-	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
+	return best_c0, best_c1, best_xy
 }
 
 func main() {
@@ -219,8 +219,12 @@ func main() {
 		adj_c0, adj_c1 = &adj_rgb.R, &adj_rgb.G
 	}
 
-	//naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
-	quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	//best_c0, best_c1, best_xy := naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	best_c0, best_c1, best_xy := quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+
+	fmt.Fprintln(os.Stderr, "Best values:", best_c0, best_c1)
+	fmt.Fprintln(os.Stderr, "Best xy:", best_xy.X, best_xy.Y)
+	fmt.Fprintln(os.Stderr, "Best distance:", distance(d65_xy, best_xy))
 
 	n, err := spotread_stdin.Write([]byte{'q', 'q'})
 	if err != nil { die(err) }
