@@ -99,7 +99,7 @@ func Broydens_method(H *[4]float64, px0, px1, py0, py1, x0, x1, y0, y1 float64) 
 	return x0, x1
 }
 
-func clamp(x, a, b float64) float64 {
+func clamp(x, a, b int) int {
 	if x < a { return a }
 	if x > b { return b }
 	return x
@@ -107,37 +107,43 @@ func clamp(x, a, b float64) float64 {
 
 func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	px0, px1 := float64(best_c0), float64(best_c1)
-	prev_xy := best_xy
-	x0, x1 := px0 * r.Float64(), px1 * r.Float64()
-	c0, c1 := byte(x0 + 0.5), byte(x1 + 0.5)
-	x0, x1 = float64(c0), float64(c1)
-	H := [4]float64{1.0 / x0, 0, 0, 1.0 / x1}
+	pc0, pc1 := 0, 0
+	for pc0 == pc1 {
+		pc0 = 128 + r.Intn(128)
+		pc1 = 128 + r.Intn(128)
+	}
+	adjust(byte(pc0), byte(pc1))
+	prev_xy, err := measure()
+	if err != nil { die(err) }
+	c0, c1 := 0, 0
+	for pc0 == c0 || pc1 == c1 || c0 == c1 {
+		c0 = 128 + r.Intn(128)
+		c1 = 128 + r.Intn(128)
+	}
+	H := [4]float64{1.0 / float64(c0), 0, 0, 1.0 / float64(c1)}
 	best_dis := distance(setpoint, best_xy)
 	for i := 0; i < 50; i++ {
-		adjust(c0, c1)
+		adjust(byte(c0), byte(c1))
 		xy, err := measure()
 		if err != nil { die(err) }
 		dis := distance(setpoint, xy)
 		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis)
-		if dis < best_dis {
-			best_c0 = c0
-			best_c1 = c1
+		if dis <= best_dis {
+			best_c0 = byte(c0)
+			best_c1 = byte(c1)
 			best_xy = xy
 			best_dis = dis
 		}
 		py0, py1 := prev_xy.X - setpoint.X, prev_xy.Y - setpoint.Y
 		y0, y1 := xy.X - setpoint.X, xy.Y - setpoint.Y
-		nx0, nx1 := Broydens_method(&H, px0, px1, py0, py1, x0, x1, y0, y1)
-		x0, x1, px0, px1 = clamp(nx0, 0, 255), clamp(nx1, 0, 255), x0, x1
+		nx0, nx1 := Broydens_method(&H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
+		nc0, nc1 := clamp(int(nx0 + 0.5), 0, 255), clamp(int(nx1 + 0.5), 0, 255)
 		// perturbate if no difference or loss of dimension
-		nc0, nc1 := byte(x0 + 0.5), byte(x1 + 0.5)
 		for (c0 == nc0 && c1 == nc1) || nc0 == nc1 {
-			if nc0 > 0 { nc0 -= byte(r.Intn(2)) } else { nc0 += byte(r.Intn(2)) }
-			if nc1 > 0 { nc1 -= byte(r.Intn(2)) } else { nc1 += byte(r.Intn(2)) }
+			if nc0 > 0 { nc0 -= r.Intn(2) } else { nc0 += r.Intn(2) }
+			if nc1 > 0 { nc1 -= r.Intn(2) } else { nc1 += r.Intn(2) }
 		}
-		c0, c1 = nc0, nc1
-		x0, x1 = float64(c0), float64(c1)
+		c0, c1, pc0, pc1 = nc0, nc1, c0, c1
 		prev_xy = xy
 	}
 	adjust(best_c0, best_c1)
