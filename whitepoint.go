@@ -77,16 +77,23 @@ func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, erro
 	fmt.Println(best_xy.X, best_xy.Y, setpoint.X, setpoint.Y, best_dis)
 }
 
-func Broydens_method(H *[4]float64, px0, px1, py0, py1, x0, x1, y0, y1 float64) (float64, float64) {
+func Broydens_method(good bool, H *[4]float64, px0, px1, py0, py1, x0, x1, y0, y1 float64) (float64, float64) {
 	dx0 := x0 - px0
 	dx1 := x1 - px1
 	dy0 := y0 - py0
 	dy1 := y1 - py1
 	t0 := dx0 - (H[0] * dy0 + H[1] * dy1)
 	t1 := dx1 - (H[2] * dy0 + H[3] * dy1)
-	u0 := dx0 * H[0] + dx1 * H[2]
-	u1 := dx0 * H[1] + dx1 * H[3]
-	sp := u0 * dy0 + u1 * dy1
+	var u0, u1, sp float64
+	if good {
+		u0 = dx0 * H[0] + dx1 * H[2]
+		u1 = dx0 * H[1] + dx1 * H[3]
+		sp = u0 * dy0 + u1 * dy1
+	} else {
+		u0 = dy0
+		u1 = dy1
+		sp = dy0 * dy0 + dy1 * dy1
+	}
 	if math.Abs(sp) > 0.0000000001 {
 		H[0] += t0 * u0 / sp
 		H[1] += t0 * u1 / sp
@@ -136,7 +143,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		}
 		py0, py1 := prev_xy.X - setpoint.X, prev_xy.Y - setpoint.Y
 		y0, y1 := xy.X - setpoint.X, xy.Y - setpoint.Y
-		nx0, nx1 := Broydens_method(&H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
+		nx0, nx1 := Broydens_method(false, &H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
 		nc0, nc1 := clamp(int(nx0 + 0.5), 0, 255), clamp(int(nx1 + 0.5), 0, 255)
 		// perturbate if no difference or loss of dimension
 		for (c0 == nc0 && c1 == nc1) || nc0 == nc1 {
