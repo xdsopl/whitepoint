@@ -5,6 +5,9 @@ To the extent possible under law, the author(s) have dedicated all copyright and
 You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 ```
 
+Read:
+[Broyden's method](https://en.wikipedia.org/wiki/Broyden%27s_method)
+
 Using fast converging Broyden's quasi-Newton method:
 
 ![broyden.png](https://raw.githubusercontent.com/xdsopl/whitepoint/master/doc/broyden.png)
