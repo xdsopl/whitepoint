@@ -212,8 +212,8 @@ func main() {
 		adj_c0, adj_c1 = &adj_rgb.R, &adj_rgb.G
 	}
 
-	naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
-	//quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	//naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
 
 	n, err := spotread_stdin.Write([]byte{'q', 'q'})
 	if err != nil { die(err) }
