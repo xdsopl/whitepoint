@@ -129,7 +129,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 	}
 	H := [4]float64{1.0 / float64(c0), 0, 0, 1.0 / float64(c1)}
 	best_dis := distance(setpoint, best_xy)
-	for i := 0; i < 100 && 0.0002 < best_dis; i++ {
+	for i := 0; i < 100 && 0.0005 < best_dis; i++ {
 		adjust(byte(c0), byte(c1))
 		xy, err := measure()
 		if err != nil { die(err) }
