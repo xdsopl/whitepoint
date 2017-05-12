@@ -61,7 +61,7 @@ func naive(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, erro
 		xy, err := measure()
 		if err != nil { die(err) }
 		dis := distance(setpoint, xy)
-		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis)
+		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis, best_c0, best_c1)
 		if dis > best_dis + 0.0005 {
 			*ca = tmp
 			if found { break }
@@ -134,7 +134,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		xy, err := measure()
 		if err != nil { die(err) }
 		dis := distance(setpoint, xy)
-		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis)
+		fmt.Println(xy.X, xy.Y, setpoint.X, setpoint.Y, dis, c0, c1)
 		if dis <= best_dis {
 			best_c0 = byte(c0)
 			best_c1 = byte(c1)
