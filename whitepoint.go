@@ -113,7 +113,7 @@ func clamp(x, a, b int) int {
 	return x
 }
 
-func quasi_Newton_method(good bool, best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
+func quasi_Newton_method(good bool, target float64, best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	pc0, pc1 := 0, 0
 	for pc0 == pc1 {
@@ -130,7 +130,7 @@ func quasi_Newton_method(good bool, best_c0, best_c1 byte, best_xy, setpoint XY,
 	}
 	H := [4]float64{1.0 / float64(c0), 0, 0, 1.0 / float64(c1)}
 	best_dis := distance(setpoint, best_xy)
-	for i := 0; i < 100 && 0.0005 < best_dis; i++ {
+	for i := 0; i < 100 && target < best_dis; i++ {
 		adjust(byte(c0), byte(c1))
 		xy, err := measure()
 		if err != nil { die(err) }
@@ -162,6 +162,8 @@ func quasi_Newton_method(good bool, best_c0, best_c1 byte, best_xy, setpoint XY,
 func main() {
 	var good bool
 	flag.BoolVar(&good, "good", false, "Use good Broyden's method")
+	var target float64
+	flag.Float64Var(&target, "target", 0.0005, "Finish if distance reaches target")
 	flag.Parse()
 
 	fb, err := framebuffer.Open("/dev/fb0")
@@ -226,7 +228,7 @@ func main() {
 	}
 
 	//best_c0, best_c1, best_xy := naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
-	best_c0, best_c1, best_xy := quasi_Newton_method(good, max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	best_c0, best_c1, best_xy := quasi_Newton_method(good, target, max_c0, max_c1, now_xy, d65_xy, measure, adjust)
 
 	fmt.Fprintln(os.Stderr, "Best values:", best_c0, best_c1)
 	fmt.Fprintln(os.Stderr, "Best xy:", best_xy.X, best_xy.Y)
