@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 	"math"
+	"flag"
 	"math/rand"
 	"bufio"
 	"errors"
@@ -112,7 +113,7 @@ func clamp(x, a, b int) int {
 	return x
 }
 
-func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
+func quasi_Newton_method(good bool, best_c0, best_c1 byte, best_xy, setpoint XY, measure func() (XY, error), adjust func(byte, byte)) (byte, byte, XY) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	pc0, pc1 := 0, 0
 	for pc0 == pc1 {
@@ -143,7 +144,7 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		}
 		py0, py1 := prev_xy.X - setpoint.X, prev_xy.Y - setpoint.Y
 		y0, y1 := xy.X - setpoint.X, xy.Y - setpoint.Y
-		nx0, nx1 := Broydens_method(false, &H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
+		nx0, nx1 := Broydens_method(good, &H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
 		nc0, nc1 := clamp(int(nx0 + 0.5), 0, 255), clamp(int(nx1 + 0.5), 0, 255)
 		// perturbate if no difference
 		tc0, tc1 := nc0, nc1
@@ -159,6 +160,10 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 }
 
 func main() {
+	var good bool
+	flag.BoolVar(&good, "good", false, "Use good Broyden's method")
+	flag.Parse()
+
 	fb, err := framebuffer.Open("/dev/fb0")
 	if err != nil { die(err) }
 	spotread := exec.Command("spotread", "-e", "-x")
@@ -221,7 +226,7 @@ func main() {
 	}
 
 	//best_c0, best_c1, best_xy := naive(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
-	best_c0, best_c1, best_xy := quasi_Newton_method(max_c0, max_c1, now_xy, d65_xy, measure, adjust)
+	best_c0, best_c1, best_xy := quasi_Newton_method(good, max_c0, max_c1, now_xy, d65_xy, measure, adjust)
 
 	fmt.Fprintln(os.Stderr, "Best values:", best_c0, best_c1)
 	fmt.Fprintln(os.Stderr, "Best xy:", best_xy.X, best_xy.Y)
