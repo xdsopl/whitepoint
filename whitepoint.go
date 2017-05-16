@@ -145,9 +145,9 @@ func quasi_Newton_method(best_c0, best_c1 byte, best_xy, setpoint XY, measure fu
 		y0, y1 := xy.X - setpoint.X, xy.Y - setpoint.Y
 		nx0, nx1 := Broydens_method(false, &H, float64(pc0), float64(pc1), py0, py1, float64(c0), float64(c1), y0, y1)
 		nc0, nc1 := clamp(int(nx0 + 0.5), 0, 255), clamp(int(nx1 + 0.5), 0, 255)
-		// perturbate if no difference or loss of dimension
+		// perturbate if no difference
 		tc0, tc1 := nc0, nc1
-		for (c0 == tc0 && c1 == tc1) || tc0 == tc1 {
+		for c0 == tc0 && c1 == tc1 {
 			tc0 = clamp(nc0 + r.Intn(3) - 1, 0, 255)
 			tc1 = clamp(nc1 + r.Intn(3) - 1, 0, 255)
 		}
