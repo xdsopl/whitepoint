@@ -10,9 +10,9 @@ Read:
 
 Using fast converging Broyden's quasi-Newton method:
 
-![broyden.png](https://raw.githubusercontent.com/xdsopl/whitepoint/master/doc/broyden.png)
+![broyden.png](doc/broyden.png)
 
 Using a naive and very slow converging method for demonstration:
 
-![naive.png](https://raw.githubusercontent.com/xdsopl/whitepoint/master/doc/naive.png)
+![naive.png](doc/naive.png)
 
